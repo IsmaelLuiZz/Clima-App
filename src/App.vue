@@ -4,7 +4,8 @@ import axios from "axios";
 import WeatherCard from "./components/WeatherCard.vue";
 import AppHeader from "./components/AppHeader.vue";
 import logo from "@/assets/images/Clima-logo1.png";
-// 1. Interfaces
+
+// Interfaces
 interface WeatherItem {
   main: string;
   description: string;
@@ -41,6 +42,7 @@ const fetchWeather = async (cityName: string) => {
   }
 };
 
+// Buscar cidades com filtro de duplicados
 const searchCities = async () => {
   if (city.value.length < 2) {
     suggestions.value = [];
@@ -50,7 +52,15 @@ const searchCities = async () => {
   try {
     const url = `https://api.openweathermap.org/geo/1.0/direct?q=${city.value}&limit=5&appid=${apiKey}`;
     const response = await axios.get(url);
-    suggestions.value = response.data;
+
+    // Filtrar duplicados
+    const unique = new Map<string, CitySuggestion>();
+    response.data.forEach((c: CitySuggestion) => {
+      const key = `${c.name},${c.country}`;
+      if (!unique.has(key)) unique.set(key, c);
+    });
+
+    suggestions.value = Array.from(unique.values());
   } catch (error) {
     console.error("Erro ao buscar cidades:", error);
     suggestions.value = [];
@@ -61,7 +71,6 @@ const selectCity = (cityObj: CitySuggestion) => {
   city.value = `${cityObj.name}, ${cityObj.country}`;
   suggestions.value = [];
   fetchWeather(cityObj.name);
-
   (document.activeElement as HTMLElement)?.blur();
 };
 </script>
@@ -70,8 +79,10 @@ const selectCity = (cityObj: CitySuggestion) => {
   <div
     class="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-400 to-indigo-600 text-white p-4"
   >
+    <!-- Header fixo -->
     <AppHeader v-if="weather" class="fixed top-0 left-0 w-full z-20" />
 
+    <!-- Logo -->
     <img
       v-if="!weather"
       :src="logo"
@@ -79,14 +90,15 @@ const selectCity = (cityObj: CitySuggestion) => {
       class="w-20 h-20 mb-4 drop-shadow-lg"
     />
 
+    <!-- Campo de busca -->
     <div
       class="w-full max-w-md relative"
       :class="weather ? 'mt-28 mb-6' : 'mb-6 mt-20'"
     >
       <div class="flex gap-2 relative">
-        <span class="absolute inset-y-0 left-3 flex items-center text-gray-400">
-          🔍
-        </span>
+        <span class="absolute inset-y-0 left-3 flex items-center text-gray-400"
+          >🔍</span
+        >
 
         <input
           v-model="city"
@@ -104,6 +116,7 @@ const selectCity = (cityObj: CitySuggestion) => {
         </button>
       </div>
 
+      <!-- Sugestões -->
       <ul
         v-if="suggestions.length > 0"
         class="absolute bg-white text-black mt-1 w-full rounded-lg shadow-lg max-h-60 overflow-y-auto z-10"
@@ -119,6 +132,7 @@ const selectCity = (cityObj: CitySuggestion) => {
       </ul>
     </div>
 
+    <!-- Card do clima -->
     <WeatherCard v-if="weather" :weatherData="weather" />
   </div>
 </template>
